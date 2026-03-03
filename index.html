@@ -55,14 +55,24 @@
 
         .candidate-info { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 
+        /* AJUSTE SEGURO PARA A FOTO NÃO ESTICAR NO HTML2CANVAS */
         .photo-slot {
             width: 110px; height: 110px;
             background: #eee; border-radius: 50%;
             border: 4px solid white; overflow: hidden; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             flex-shrink: 0; z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .photo-slot img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-slot img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block; 
+            border-radius: 50%; 
+        }
 
         .name-box h1 { margin: 0; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
         .subheadline { font-size: 0.85rem; font-weight: 400; opacity: 0.9; text-transform: uppercase; }
@@ -192,7 +202,11 @@
         .printing-mode .day-label { display: block !important; text-align: center; font-weight: 800; color: #999; font-size: 0.8rem; }
         .printing-mode .header { flex-direction: row !important; text-align: left !important; padding: 30px 50px !important; justify-content: space-between !important; }
         .printing-mode .candidate-info { flex-direction: row !important; gap: 25px !important; }
-        .printing-mode .photo-slot { width: 180px !important; height: 180px !important; margin-top: 40px !important; }
+        
+        /* BLOQUEIO ANTI-ESTCÍMENTO PARA A FOTO NO MOMENTO DE SALVAR */
+        .printing-mode .photo-slot { width: 180px !important; height: 180px !important; margin-top: 40px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+        .printing-mode .photo-slot img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; border-radius: 50% !important; }
+        
         .printing-mode .name-box h1 { font-size: 2.5rem !important; }
         .printing-mode .empty-day { display: block !important; visibility: hidden; }
     </style>
