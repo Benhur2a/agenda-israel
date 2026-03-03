@@ -238,7 +238,7 @@
     // IMPORTANTE: O link abaixo DEVE ser o link "Executável" (Web App) do Google Apps Script configurado na sua nova planilha.
     const API_URL = "https://script.google.com/macros/s/AKfycbyRkXIyvADbza-Fbt2sjzmtL3QZulnmV0AyUY8wBxg2pYFHZUFFiGG1oexuQ5PjQlvK/exec"; 
 
-    // ALTERAÇÃO AQUI: Obtém o mês e o ano atuais dinamicamente
+    // Obtém o mês e o ano atuais dinamicamente
     let hoje = new Date();
     let dt = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     
@@ -255,20 +255,37 @@
             alert("Você precisa colar o link do Google Script no código!");
             return;
         }
+
+        // Tenta carregar do cache local para resposta instantânea
+        const cachedData = localStorage.getItem('agenda_israel_data');
+        if (cachedData) {
+            try {
+                globalData = JSON.parse(cachedData);
+            } catch(e) {
+                console.error("Erro ao ler cache", e);
+            }
+        }
+        
+        // Desenha a grelha imediatamente (mesmo que vazia ou só com dados em cache)
+        draw();
         
         statusDiv.style.display = 'block';
-        statusDiv.innerText = "🔄 Baixando agenda...";
+        statusDiv.innerText = "🔄 Sincronizando com a nuvem...";
         
         try {
             const response = await fetch(API_URL + "?action=read");
             const data = await response.json();
             globalData = data; 
+            // Atualiza o cache com os dados novos vindos da nuvem
+            localStorage.setItem('agenda_israel_data', JSON.stringify(globalData));
             statusDiv.style.display = 'none';
+            // Redesenha para garantir que mostra os dados mais recentes
+            draw();
         } catch (error) {
             console.error(error);
-            statusDiv.innerText = "❌ Erro de conexão";
+            statusDiv.innerText = "❌ Trabalhando Offline";
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
         }
-        draw();
     }
 
     function getContrastYIQ(hexcolor){
@@ -355,11 +372,14 @@
             text: textArea.innerText
         };
 
+        // Salva instantaneamente no cache local também
+        localStorage.setItem('agenda_israel_data', JSON.stringify(globalData));
+
         if (statusHideTimer) clearTimeout(statusHideTimer);
         
         clearTimeout(saveTimeout);
         statusDiv.style.display = 'block';
-        statusDiv.innerText = "✍️ Digitando...";
+        statusDiv.innerText = "✍️ A digitar...";
 
         saveTimeout = setTimeout(() => {
             saveToCloud(id, day, m, y, colorInput.value, textArea.innerText);
@@ -370,7 +390,7 @@
         if (statusHideTimer) clearTimeout(statusHideTimer);
 
         statusDiv.style.display = 'block';
-        statusDiv.innerText = "☁️ Salvando...";
+        statusDiv.innerText = "☁️ A guardar na nuvem...";
         
         const dateLabel = `${d}/${m+1}/${y}`;
         const url = `${API_URL}?action=save&id=${id}&dateLabel=${dateLabel}&color=${encodeURIComponent(color)}&text=${encodeURIComponent(text)}`;
@@ -379,10 +399,10 @@
             const fetchPromise = fetch(url, { mode: 'no-cors' });
             const timeoutPromise = new Promise(resolve => setTimeout(resolve, 4000));
             await Promise.race([fetchPromise, timeoutPromise]);
-            statusDiv.innerText = "✅ Salvo!";
+            statusDiv.innerText = "✅ Guardado!";
         } catch (error) {
             console.error(error);
-            statusDiv.innerText = "✅ Salvo!"; 
+            statusDiv.innerText = "✅ Guardado localmente!"; 
         } finally {
             statusHideTimer = setTimeout(() => {
                 statusDiv.style.display = 'none';
