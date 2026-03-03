@@ -221,7 +221,7 @@
 
     <div class="nav">
         <button onclick="change(-1)">ANTERIOR</button>
-        <h2 id="monthTitle">Fevereiro 2026</h2>
+        <h2 id="monthTitle">Carregando...</h2>
         <button onclick="change(1)">PRÓXIMO</button>
     </div>
 
@@ -238,7 +238,10 @@
     // IMPORTANTE: O link abaixo DEVE ser o link "Executável" (Web App) do Google Apps Script configurado na sua nova planilha.
     const API_URL = "https://script.google.com/macros/s/AKfycbyRkXIyvADbza-Fbt2sjzmtL3QZulnmV0AyUY8wBxg2pYFHZUFFiGG1oexuQ5PjQlvK/exec"; 
 
-    let dt = new Date(2026, 1, 1);
+    // ALTERAÇÃO AQUI: Obtém o mês e o ano atuais dinamicamente
+    let hoje = new Date();
+    let dt = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
     let globalData = {}; 
     let saveTimeout = null;
     let statusHideTimer = null; 
