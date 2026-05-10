@@ -591,8 +591,9 @@
       const parsed = JSON.parse(raw.text);
       if (Array.isArray(parsed)) return parsed;
     } catch(e) {}
-    return [{ id: uid(), time:"", title: raw.text.split('\n')[0].slice(0,80) || "Compromisso",
-              location:"", category:"outro", notes: raw.text }];
+    // Fallback: texto legado vira um único evento, usando o texto COMPLETO como título
+    return [{ id: uid(), time:"", title: raw.text.trim() || "Compromisso",
+              location:"", category:"outro", notes: "" }];
   }
   function getEvents(y,m,d) {
     const id = idOf(y,m,d);
@@ -823,6 +824,35 @@
     }
   }
 
+  // Calcula larguras de coluna proporcionais ao conteúdo de cada dia da semana.
+  // Colunas com texto longo ficam mais largas; colunas vazias/curtas, mais estreitas.
+  function computeColumnWidths(y, m) {
+    const lastDate = new Date(y, m+1, 0).getDate();
+    const weights = [0,0,0,0,0,0,0]; // Dom, Seg, Ter, Qua, Qui, Sex, Sáb
+
+    // Para cada dia, pega o MAIOR "peso" dos eventos como referência da coluna
+    for (let d = 1; d <= lastDate; d++) {
+      const wkd = new Date(y, m, d).getDay();
+      const events = getEvents(y, m, d);
+      let score = 0;
+      events.forEach(ev => {
+        score += (ev.title || '').length;
+        score += (ev.location || '').length * 0.7;
+        score += (ev.time || '').length * 0.5;
+      });
+      weights[wkd] = Math.max(weights[wkd], score);
+    }
+
+    // Raiz quadrada suaviza extremos (coluna com 200 chars não vira 25x mais larga)
+    const softened = weights.map(w => Math.sqrt(Math.max(w, 8)));
+    // Piso mínimo: cada coluna recebe pelo menos 65% da média (não some)
+    const avg = softened.reduce((a,b)=>a+b, 0) / 7;
+    const minVal = avg * 0.65;
+    const adjusted = softened.map(w => Math.max(w, minVal));
+    const total = adjusted.reduce((a,b)=>a+b, 0);
+    return adjusted.map(w => ((w/total) * 100).toFixed(3) + '%');
+  }
+
   // Constrói um container LIMPO para exportação. Usa <table> com table-layout:fixed
   // e estilos inline — evita bugs do html2canvas com CSS Grid moderno.
   function buildExportContainer(photoSrc) {
@@ -832,6 +862,7 @@
     const totalCells = Math.ceil((firstWeekday + lastDate) / 7) * 7;
     const today = new Date();
     const isToday = d => today.getFullYear()===y && today.getMonth()===m && today.getDate()===d;
+    const colWidths = computeColumnWidths(y, m);
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
@@ -855,7 +886,7 @@
       if (i % 7 === 0) bodyHTML += '<tr>';
 
       if (i < firstWeekday || dc > lastDate) {
-        bodyHTML += `<td style="${borderRight}${borderBottom}height:140px;background:rgba(120,80,40,.025);vertical-align:top;width:14.285%;"></td>`;
+        bodyHTML += `<td style="${borderRight}${borderBottom}height:140px;background:rgba(120,80,40,.025);vertical-align:top;"></td>`;
       } else {
         const events = getEvents(y, m, dc);
         const wkd = new Date(y, m, dc).getDay();
@@ -878,7 +909,7 @@
           evHTML += `<div style="font-size:10.5px;padding:4px 7px;margin-bottom:3px;border-left:3px solid ${cat.border};background:${cat.bg};color:${cat.text};border-radius:4px;font-weight:600;line-height:1.35;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">${time}${escapeHTML(ev.title)}</div>`;
         });
 
-        bodyHTML += `<td style="${borderRight}${borderBottom}${dayBg}height:140px;padding:8px 8px 6px;vertical-align:top;width:14.285%;">
+        bodyHTML += `<td style="${borderRight}${borderBottom}${dayBg}height:140px;padding:8px 8px 6px;vertical-align:top;">
           ${dayNumHTML}
           ${evHTML}
         </td>`;
@@ -888,7 +919,7 @@
       if (isLastCol) bodyHTML += '</tr>';
     }
 
-    const headerCellStyle = 'padding:14px 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.22em;width:14.285%;border-bottom:1px solid rgba(120,80,40,.10);';
+    const headerCellStyle = 'padding:14px 6px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.22em;border-bottom:1px solid rgba(120,80,40,.10);';
 
     const photoHTML = photoSrc
       ? `<img src="${photoSrc}" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 0 0 1px #ff4500,0 8px 24px rgba(255,69,0,.30);flex-shrink:0;display:block;">`
@@ -908,6 +939,9 @@
       </div>
 
       <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:18px;overflow:hidden;border:1px solid rgba(0,0,0,.06);table-layout:fixed;box-shadow:0 1px 2px rgba(80,40,20,.04),0 8px 24px rgba(80,40,20,.06);">
+        <colgroup>
+          ${colWidths.map(w => `<col style="width:${w}">`).join('')}
+        </colgroup>
         <thead>
           <tr style="background:#faf6ed;">
             <th style="${headerCellStyle}color:#ff4500;">Dom</th>
